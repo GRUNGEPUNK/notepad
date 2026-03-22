@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCRATCHROT — notepad</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/base16/tomorrow-night.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0d0b;
+    --bg2: #141310;
+    --bg3: #1c1a16;
+    --bg4: #242118;
+    --border: #2e2b22;
+    --border-hot: #5a5030;
+    --text: #c8bfa0;
+    --text-dim: #6b6450;
+    --text-dimmer: #3a3628;
+    --accent: #d4a843;
+    --accent2: #8b4a2f;
+    --accent3: #4a7c5a;
+    --red: #c44a3a;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --body: 'DM Sans', sans-serif;
+    --scratch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 14px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: var(--scratch);
+    background-repeat: repeat;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.6;
+  }
+
+  /* ─── TOPBAR ─── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+
+  #logo {
+    font-family: var(--display);
+    font-size: 24px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(212,168,67,0.3);
+    flex-shrink: 0;
+  }
+
+  #logo span {
+    color: var(--text-dim);
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  #search-wrap {
+    flex: 1;
+    max-width: 400px;
+    margin-left: auto;
+    position: relative;
+  }
+
+  #search {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 10px 6px 30px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #search:focus { border-color: var(--border-hot); }
+  #search::placeholder { color: var(--text-dimmer); }
+
+  #search-icon {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    font-size: 12px;
+    pointer-events: none;
+  }
+
+  #mode-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  #mode-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── LAYOUT ─── */
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ─── SIDEBAR ─── */
+  #sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    overflow: hidden;
+  }
+
+  #sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  #sidebar-header span {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 2px 5px;
+    font-size: 16px;
+    border-radius: 2px;
+    transition: color 0.15s;
+    line-height: 1;
+  }
+  .icon-btn:hover { color: var(--accent); }
+
+  #folders-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+
+  #folders-list::-webkit-scrollbar { width: 4px; }
+  #folders-list::-webkit-scrollbar-track { background: transparent; }
+  #folders-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .folder-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-left: 2px solid transparent;
+    user-select: none;
+  }
+  .folder-item:hover { background: var(--bg3); }
+  .folder-item.active {
+    background: var(--bg4);
+    border-left-color: var(--accent);
+  }
+
+  .folder-icon { font-size: 13px; }
+  .folder-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .folder-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dimmer);
+  }
+
+  .folder-del {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0 2px;
+    transition: opacity 0.15s;
+  }
+  .folder-item:hover .folder-del { opacity: 1; }
+
+  /* ─── NOTE LIST ─── */
+  #notelist {
+    width: 240px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  #notelist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  #notelist-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  #notes-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  #notes-list::-webkit-scrollbar { width: 4px; }
+  #notes-list::-webkit-scrollbar-track { background: transparent; }
+  #notes-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .note-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .note-item:hover { background: var(--bg3); }
+  .note-item.active {
+    background: var(--bg3);
+    border-left-color: var(--accent);
+  }
+
+  .note-title-preview {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+
+  .note-preview-text {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--mono);
+  }
+
+  .note-date {
+    font-size: 10px;
+    color: var(--text-dimmer);
+    font-family: var(--mono);
+    margin-top: 4px;
+  }
+
+  .note-del-btn {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    opacity: 0;
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 13px;
+    transition: opacity 0.15s;
+  }
+  .note-item:hover .note-del-btn { opacity: 1; }
+
+  /* ─── EDITOR ─── */
+  #editor-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  #editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .tb-btn {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tb-btn:hover { border-color: var(--border-hot); color: var(--text); }
+
+  .tb-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  #note-title-input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--display);
+    font-size: 28px;
+    letter-spacing: 2px;
+    padding: 18px 24px 8px;
+    flex-shrink: 0;
+    width: 100%;
+  }
+  #note-title-input::placeholder { color: var(--text-dimmer); }
+
+  #editor-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #raw-editor {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.8;
+    padding: 12px 24px 24px;
+    resize: none;
+    overflow-y: auto;
+    tab-size: 2;
+  }
+  #raw-editor::-webkit-scrollbar { width: 4px; }
+  #raw-editor::-webkit-scrollbar-track { background: transparent; }
+  #raw-editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  #raw-editor::placeholder { color: var(--text-dimmer); }
+
+  #preview-pane {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 24px 24px;
+    display: none;
+  }
+  #preview-pane::-webkit-scrollbar { width: 4px; }
+  #preview-pane::-webkit-scrollbar-track { background: transparent; }
+  #preview-pane::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ─── MARKDOWN PREVIEW STYLES ─── */
+  #preview-pane h1, #preview-pane h2, #preview-pane h3 {
+    font-family: var(--display);
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin: 16px 0 8px;
+  }
+  #preview-pane h1 { font-size: 28px; }
+  #preview-pane h2 { font-size: 22px; }
+  #preview-pane h3 { font-size: 18px; }
+
+  #preview-pane p { margin-bottom: 12px; line-height: 1.8; }
+
+  #preview-pane strong { color: var(--accent); font-weight: 600; }
+  #preview-pane em { color: var(--text-dim); font-style: italic; }
+
+  #preview-pane code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 2px;
+    color: var(--accent2);
+  }
+
+  #preview-pane pre {
+    background: var(--bg3) !important;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px;
+    margin: 12px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+  #preview-pane pre::before {
+    content: 'CODE';
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dimmer);
+    letter-spacing: 2px;
+  }
+  #preview-pane pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: 12px;
+  }
+
+  #preview-pane blockquote {
+    border-left: 2px solid var(--accent2);
+    margin: 12px 0;
+    padding: 8px 16px;
+    color: var(--text-dim);
+    background: var(--bg3);
+  }
+
+  #preview-pane hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  #preview-pane a { color: var(--accent); text-decoration: none; }
+  #preview-pane a:hover { text-decoration: underline; }
+
+  /* CHECKLIST in preview */
+  #preview-pane ul { list-style: none; padding-left: 0; margin-bottom: 12px; }
+  #preview-pane ul li { padding: 3px 0; padding-left: 22px; position: relative; line-height: 1.6; }
+  #preview-pane ul li::before {
+    content: '▸';
+    position: absolute;
+    left: 4px;
+    color: var(--text-dimmer);
+    font-size: 10px;
+  }
+
+  #preview-pane ol { padding-left: 20px; margin-bottom: 12px; }
+  #preview-pane ol li { padding: 3px 0; line-height: 1.6; }
+
+  /* checkbox rendering */
+  .task-list-item { display: flex !important; align-items: flex-start !important; gap: 8px; padding-left: 0 !important; }
+  .task-list-item::before { display: none !important; }
+
+  .task-checkbox {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--border-hot);
+    border-radius: 1px;
+    background: var(--bg3);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 3px;
+    position: relative;
+    transition: all 0.15s;
+  }
+  .task-checkbox:checked {
+    background: var(--accent3);
+    border-color: var(--accent3);
+  }
+  .task-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: -2px;
+    left: 1px;
+    font-size: 11px;
+    color: var(--bg);
+    font-weight: bold;
+  }
+
+  .task-label { line-height: 1.6; }
+  .task-label.done { color: var(--text-dimmer); text-decoration: line-through; }
+
+  /* ─── EMPTY STATES ─── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dimmer);
+    font-family: var(--mono);
+    font-size: 12px;
+    gap: 8px;
+    text-align: center;
+  }
+  .empty-state-big {
+    font-family: var(--display);
+    font-size: 36px;
+    letter-spacing: 4px;
+    color: var(--text-dimmer);
+    opacity: 0.3;
+  }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border-hot);
+    border-radius: 2px;
+    padding: 24px;
+    width: 320px;
+    transform: translateY(-10px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-title {
+    font-family: var(--display);
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .modal input[type="text"] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .modal input[type="text"]:focus { border-color: var(--border-hot); }
+
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+  .btn-cancel, .btn-confirm {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+  }
+  .btn-cancel { background: none; border-color: var(--border); color: var(--text-dim); }
+  .btn-cancel:hover { border-color: var(--text-dim); color: var(--text); }
+  .btn-confirm { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+  .btn-confirm:hover { background: var(--text); border-color: var(--text); }
+
+  /* color dots for folder */
+  .color-picker { display: flex; gap: 8px; margin-bottom: 14px; }
+  .color-dot {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s;
+  }
+  .color-dot.selected { border-color: var(--text); }
+
+  /* ─── STATUS BAR ─── */
+  #statusbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 4px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+  .status-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dimmer);
+    letter-spacing: 1px;
+  }
+  .status-item span { color: var(--text-dim); }
+
+  /* ─── SPLIT PREVIEW ─── */
+  #editor-body.split #raw-editor,
+  #editor-body.split #preview-pane {
+    flex: 1;
+    display: block;
+  }
+  #editor-body.split #raw-editor {
+    border-right: 1px solid var(--border);
+  }
+
+  /* scrollbar global */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* search highlight */
+  mark {
+    background: rgba(212, 168, 67, 0.25);
+    color: var(--accent);
+    border-radius: 1px;
+  }
+
+  /* folder color indicators */
+  .folder-color-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div id="logo">SCRATCHROT <span>// notepad</span></div>
+  <div id="search-wrap">
+    <span id="search-icon">⌕</span>
+    <input type="text" id="search" placeholder="search notes...">
+  </div>
+  <button class="icon-btn" id="mode-toggle" title="Toggle preview mode">[ RAW ]</button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <span>FOLDERS</span>
+      <button class="icon-btn" id="add-folder-btn" title="New folder">+</button>
+    </div>
+    <div id="folders-list"></div>
+  </div>
+
+  <!-- NOTE LIST -->
+  <div id="notelist">
+    <div id="notelist-header">
+      <span id="notelist-title">NOTES</span>
+      <button class="icon-btn" id="add-note-btn" title="New note">+</button>
+    </div>
+    <div id="notes-list"></div>
+  </div>
+
+  <!-- EDITOR -->
+  <div id="editor-pane">
+    <div id="editor-toolbar">
+      <button class="tb-btn" onclick="insertMd('**','**')"><b>B</b></button>
+      <button class="tb-btn" onclick="insertMd('*','*')"><i>I</i></button>
+      <button class="tb-btn" onclick="insertMd('~~','~~')"><s>S</s></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="insertLine('# ')">H1</button>
+      <button class="tb-btn" onclick="insertLine('## ')">H2</button>
+      <button class="tb-btn" onclick="insertLine('### ')">H3</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="insertLine('- [ ] ')">☐</button>
+      <button class="tb-btn" onclick="insertLine('- ')">list</button>
+      <button class="tb-btn" onclick="insertLine('> ')">quote</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="insertMd('`','`')">code</button>
+      <button class="tb-btn" onclick="insertCodeBlock()">```</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="insertLine('---')">hr</button>
+    </div>
+    <input type="text" id="note-title-input" placeholder="UNTITLED//">
+    <div id="editor-body">
+      <textarea id="raw-editor" placeholder="start typing // markdown supported&#10;&#10;use [ ] for checkboxes&#10;use ``` for code blocks&#10;use # for headers"></textarea>
+      <div id="preview-pane"></div>
+    </div>
+    <div id="no-note-state" class="empty-state" style="display:none;flex:1;position:absolute;inset:0;">
+      <div class="empty-state-big">∅</div>
+      <div>select or create a note</div>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <div class="status-item">WORDS: <span id="stat-words">0</span></div>
+  <div class="status-item">CHARS: <span id="stat-chars">0</span></div>
+  <div class="status-item">LINES: <span id="stat-lines">0</span></div>
+  <div class="status-item" id="stat-tasks-wrap" style="display:none">TASKS: <span id="stat-tasks">0/0</span></div>
+  <div class="status-item" style="margin-left:auto">SCRATCHROT v0.1 // offline</div>
+</div>
+
+<!-- NEW FOLDER MODAL -->
+<div class="modal-overlay" id="folder-modal">
+  <div class="modal">
+    <div class="modal-title">NEW FOLDER</div>
+    <input type="text" id="folder-name-input" placeholder="folder name...">
+    <div class="color-picker" id="folder-color-picker"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('folder-modal')">cancel</button>
+      <button class="btn-confirm" onclick="confirmNewFolder()">create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+const FOLDER_COLORS = ['#d4a843','#c44a3a','#4a7c5a','#5a6a8b','#8b4a7c','#6b6450'];
+let selectedFolderColor = FOLDER_COLORS[0];
+
+let state = {
+  folders: [
+    { id: 'f_default', name: 'inbox', color: '#d4a843', icon: '◈' }
+  ],
+  notes: [],
+  activeFolder: 'f_default',
+  activeNote: null,
+  viewMode: 'raw', // raw | preview | split
+};
+
+function save() {
+  localStorage.setItem('scratchrot', JSON.stringify(state));
+}
+
+function load() {
+  const raw = localStorage.getItem('scratchrot');
+  if (raw) {
+    try { state = { ...state, ...JSON.parse(raw) }; } catch(e) {}
+  }
+}
+
+// ─────────────────────────────────────────
+// MARKED CONFIG
+// ─────────────────────────────────────────
+marked.setOptions({ breaks: true, gfm: true });
+
+// Custom renderer for task lists
+const renderer = new marked.Renderer();
+const origListItem = renderer.listitem.bind(renderer);
+renderer.listitem = function(text, task, checked) {
+  if (task) {
+    return `<li class="task-list-item">
+      <input type="checkbox" class="task-checkbox" ${checked ? 'checked' : ''} onchange="toggleTaskInSource(this)">
+      <span class="task-label ${checked ? 'done' : ''}">${text.replace(/<input[^>]+>/,'')}</span>
+    </li>`;
+  }
+  return origListItem(text, task, checked);
+};
+marked.use({ renderer });
+
+// ─────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────
+function renderAll() {
+  renderFolders();
+  renderNoteList();
+  renderEditor();
+  updateStats();
+}
+
+function renderFolders() {
+  const el = document.getElementById('folders-list');
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  el.innerHTML = '';
+
+  state.folders.forEach(f => {
+    const noteCount = state.notes.filter(n => n.folderId === f.id).length;
+    const div = document.createElement('div');
+    div.className = 'folder-item' + (state.activeFolder === f.id ? ' active' : '');
+    div.innerHTML = `
+      <div class="folder-color-dot" style="background:${f.color}"></div>
+      <span class="folder-icon">${f.icon || '◈'}</span>
+      <span class="folder-name">${escapeHtml(f.name)}</span>
+      <span class="folder-count">${noteCount}</span>
+      ${f.id !== 'f_default' ? `<button class="folder-del" onclick="deleteFolder('${f.id}',event)">×</button>` : ''}
+    `;
+    div.addEventListener('click', () => selectFolder(f.id));
+    el.appendChild(div);
+  });
+}
+
+function renderNoteList() {
+  const el = document.getElementById('notes-list');
+  const titleEl = document.getElementById('notelist-title');
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  el.innerHTML = '';
+
+  let notes = state.notes.filter(n => n.folderId === state.activeFolder);
+
+  if (q) {
+    notes = state.notes.filter(n =>
+      n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+    );
+    titleEl.textContent = `RESULTS`;
+  } else {
+    titleEl.textContent = `NOTES`;
+  }
+
+  // Sort: pinned first, then by updatedAt
+  notes.sort((a,b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return b.updatedAt - a.updatedAt;
+  });
+
+  if (!notes.length) {
+    el.innerHTML = '<div class="empty-state" style="height:80px;font-size:11px;">nothing here</div>';
+    return;
+  }
+
+  notes.forEach(n => {
+    const div = document.createElement('div');
+    div.className = 'note-item' + (state.activeNote === n.id ? ' active' : '');
+
+    const previewText = n.content.replace(/#+\s|[*_~`\[\]>-]/g,'').slice(0, 60);
+    const dateStr = formatDate(n.updatedAt);
+
+    let displayTitle = escapeHtml(n.title || 'untitled');
+    let displayPreview = escapeHtml(previewText);
+    if (q) {
+      displayTitle = highlight(displayTitle, q);
+      displayPreview = highlight(displayPreview, q);
+    }
+
+    div.innerHTML = `
+      ${n.pinned ? '<span style="float:right;color:var(--accent);font-size:10px;margin-left:4px">PIN</span>' : ''}
+      <div class="note-title-preview">${displayTitle}</div>
+      <div class="note-preview-text">${displayPreview || '—'}</div>
+      <div class="note-date">${dateStr}</div>
+      <button class="note-del-btn" onclick="deleteNote('${n.id}',event)">×</button>
+    `;
+    div.addEventListener('click', () => selectNote(n.id));
+    el.appendChild(div);
+  });
+}
+
+function renderEditor() {
+  const titleInput = document.getElementById('note-title-input');
+  const rawEditor = document.getElementById('raw-editor');
+  const previewPane = document.getElementById('preview-pane');
+  const editorPane = document.getElementById('editor-pane');
+  const noNote = document.getElementById('no-note-state');
+  const editorBody = document.getElementById('editor-body');
+
+  const note = state.notes.find(n => n.id === state.activeNote);
+
+  if (!note) {
+    editorPane.style.position = 'relative';
+    noNote.style.display = 'flex';
+    titleInput.style.display = 'none';
+    document.getElementById('editor-toolbar').style.display = 'none';
+    editorBody.style.display = 'none';
+    return;
+  }
+
+  noNote.style.display = 'none';
+  titleInput.style.display = '';
+  document.getElementById('editor-toolbar').style.display = '';
+  editorBody.style.display = '';
+
+  titleInput.value = note.title;
+  rawEditor.value = note.content;
+
+  renderPreview(note.content);
+  applyViewMode();
+}
+
+function renderPreview(content) {
+  const preview = document.getElementById('preview-pane');
+  const html = marked.parse(content);
+  preview.innerHTML = html;
+  preview.querySelectorAll('pre code').forEach(block => {
+    hljs.highlightElement(block);
+  });
+}
+
+function applyViewMode() {
+  const raw = document.getElementById('raw-editor');
+  const preview = document.getElementById('preview-pane');
+  const body = document.getElementById('editor-body');
+  const toggle = document.getElementById('mode-toggle');
+
+  body.classList.remove('split');
+
+  if (state.viewMode === 'raw') {
+    raw.style.display = 'block';
+    preview.style.display = 'none';
+    toggle.textContent = '[ RAW ]';
+  } else if (state.viewMode === 'preview') {
+    raw.style.display = 'none';
+    preview.style.display = 'block';
+    toggle.textContent = '[ PREVIEW ]';
+  } else {
+    raw.style.display = 'block';
+    preview.style.display = 'block';
+    body.classList.add('split');
+    toggle.textContent = '[ SPLIT ]';
+  }
+}
+
+// ─────────────────────────────────────────
+// ACTIONS
+// ─────────────────────────────────────────
+function selectFolder(id) {
+  state.activeFolder = id;
+  state.activeNote = null;
+  save();
+  renderAll();
+}
+
+function selectNote(id) {
+  state.activeNote = id;
+  save();
+  renderAll();
+  setTimeout(() => document.getElementById('raw-editor').focus(), 50);
+}
+
+function addNote() {
+  const id = 'n_' + Date.now();
+  const note = {
+    id,
+    folderId: state.activeFolder,
+    title: '',
+    content: '',
+    pinned: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  state.notes.unshift(note);
+  state.activeNote = id;
+  save();
+  renderAll();
+  setTimeout(() => document.getElementById('note-title-input').focus(), 50);
+}
+
+function deleteNote(id, e) {
+  e && e.stopPropagation();
+  state.notes = state.notes.filter(n => n.id !== id);
+  if (state.activeNote === id) state.activeNote = null;
+  save();
+  renderAll();
+}
+
+function deleteFolder(id, e) {
+  e && e.stopPropagation();
+  state.folders = state.folders.filter(f => f.id !== id);
+  state.notes = state.notes.filter(n => n.folderId !== id);
+  if (state.activeFolder === id) state.activeFolder = 'f_default';
+  save();
+  renderAll();
+}
+
+function onTitleChange(val) {
+  const note = state.notes.find(n => n.id === state.activeNote);
+  if (!note) return;
+  note.title = val;
+  note.updatedAt = Date.now();
+  save();
+  renderNoteList();
+}
+
+function onContentChange(val) {
+  const note = state.notes.find(n => n.id === state.activeNote);
+  if (!note) return;
+  note.content = val;
+  note.updatedAt = Date.now();
+  save();
+  renderNoteList();
+  renderPreview(val);
+  updateStats();
+}
+
+// ─── VIEW MODE ───
+document.getElementById('mode-toggle').addEventListener('click', () => {
+  const modes = ['raw', 'preview', 'split'];
+  const idx = modes.indexOf(state.viewMode);
+  state.viewMode = modes[(idx + 1) % modes.length];
+  save();
+  applyViewMode();
+});
+
+// ─── TITLE INPUT ───
+document.getElementById('note-title-input').addEventListener('input', e => {
+  onTitleChange(e.target.value);
+});
+
+// ─── RAW EDITOR ───
+document.getElementById('raw-editor').addEventListener('input', e => {
+  onContentChange(e.target.value);
+});
+
+// Tab support in editor
+document.getElementById('raw-editor').addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const ta = e.target;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
+    ta.selectionStart = ta.selectionEnd = start + 2;
+    onContentChange(ta.value);
+  }
+});
+
+// ─── SEARCH ───
+document.getElementById('search').addEventListener('input', () => {
+  renderFolders();
+  renderNoteList();
+});
+
+// ─── ADD BUTTONS ───
+document.getElementById('add-note-btn').addEventListener('click', addNote);
+document.getElementById('add-folder-btn').addEventListener('click', () => {
+  openModal('folder-modal');
+  document.getElementById('folder-name-input').value = '';
+  setTimeout(() => document.getElementById('folder-name-input').focus(), 100);
+});
+
+// ─────────────────────────────────────────
+// TOOLBAR HELPERS
+// ─────────────────────────────────────────
+function insertMd(before, after) {
+  const ta = document.getElementById('raw-editor');
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  const selected = ta.value.substring(start, end);
+  const replacement = before + selected + after;
+  ta.value = ta.value.substring(0, start) + replacement + ta.value.substring(end);
+  ta.selectionStart = start + before.length;
+  ta.selectionEnd = start + before.length + selected.length;
+  ta.focus();
+  onContentChange(ta.value);
+}
+
+function insertLine(prefix) {
+  const ta = document.getElementById('raw-editor');
+  const start = ta.selectionStart;
+  const before = ta.value.lastIndexOf('\n', start - 1);
+  const lineStart = before + 1;
+  ta.value = ta.value.substring(0, lineStart) + prefix + ta.value.substring(lineStart);
+  ta.selectionStart = ta.selectionEnd = lineStart + prefix.length;
+  ta.focus();
+  onContentChange(ta.value);
+}
+
+function insertCodeBlock() {
+  const ta = document.getElementById('raw-editor');
+  const start = ta.selectionStart;
+  const selected = ta.value.substring(start, ta.selectionEnd);
+  const insert = '```\n' + selected + '\n```';
+  ta.value = ta.value.substring(0, start) + insert + ta.value.substring(ta.selectionEnd);
+  ta.selectionStart = ta.selectionEnd = start + 4 + selected.length;
+  ta.focus();
+  onContentChange(ta.value);
+}
+
+// ─────────────────────────────────────────
+// TASK TOGGLE (from preview)
+// ─────────────────────────────────────────
+function toggleTaskInSource(checkbox) {
+  const note = state.notes.find(n => n.id === state.activeNote);
+  if (!note) return;
+
+  const label = checkbox.nextElementSibling;
+  const taskText = label.textContent.trim();
+  const isChecked = checkbox.checked;
+
+  // Find and toggle in source
+  let content = note.content;
+  if (isChecked) {
+    content = content.replace(
+      new RegExp('- \\[ \\] ' + escapeRegex(taskText), 'g'),
+      '- [x] ' + taskText
+    );
+    label.classList.add('done');
+  } else {
+    content = content.replace(
+      new RegExp('- \\[x\\] ' + escapeRegex(taskText), 'gi'),
+      '- [ ] ' + taskText
+    );
+    label.classList.remove('done');
+  }
+  note.content = content;
+  note.updatedAt = Date.now();
+  document.getElementById('raw-editor').value = content;
+  save();
+  renderNoteList();
+  updateStats();
+}
+
+// ─────────────────────────────────────────
+// FOLDER MODAL
+// ─────────────────────────────────────────
+const ICONS = ['◈','◉','◎','▣','▤','⬡'];
+let selectedFolderIcon = '◈';
+
+function buildColorPicker() {
+  const picker = document.getElementById('folder-color-picker');
+  picker.innerHTML = '';
+  selectedFolderColor = FOLDER_COLORS[0];
+  selectedFolderIcon = ICONS[0];
+  FOLDER_COLORS.forEach((c, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'color-dot' + (i === 0 ? ' selected' : '');
+    dot.style.background = c;
+    dot.addEventListener('click', () => {
+      document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+      dot.classList.add('selected');
+      selectedFolderColor = c;
+      selectedFolderIcon = ICONS[i % ICONS.length];
+    });
+    picker.appendChild(dot);
+  });
+}
+
+function confirmNewFolder() {
+  const name = document.getElementById('folder-name-input').value.trim();
+  if (!name) return;
+  state.folders.push({
+    id: 'f_' + Date.now(),
+    name,
+    color: selectedFolderColor,
+    icon: selectedFolderIcon,
+  });
+  save();
+  closeModal('folder-modal');
+  renderAll();
+}
+
+document.getElementById('folder-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmNewFolder();
+  if (e.key === 'Escape') closeModal('folder-modal');
+});
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id === 'folder-modal') buildColorPicker();
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.getElementById('folder-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('folder-modal')) closeModal('folder-modal');
+});
+
+// ─────────────────────────────────────────
+// STATS
+// ─────────────────────────────────────────
+function updateStats() {
+  const note = state.notes.find(n => n.id === state.activeNote);
+  const content = note ? note.content : '';
+  const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+  const chars = content.length;
+  const lines = content ? content.split('\n').length : 0;
+
+  document.getElementById('stat-words').textContent = words;
+  document.getElementById('stat-chars').textContent = chars;
+  document.getElementById('stat-lines').textContent = lines;
+
+  // Task stats
+  const total = (content.match(/- \[[ x]\] /gi) || []).length;
+  const done = (content.match(/- \[x\] /gi) || []).length;
+  const tasksWrap = document.getElementById('stat-tasks-wrap');
+  if (total > 0) {
+    tasksWrap.style.display = '';
+    document.getElementById('stat-tasks').textContent = `${done}/${total}`;
+  } else {
+    tasksWrap.style.display = 'none';
+  }
+}
+
+// ─────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlight(text, q) {
+  return text.replace(new RegExp('(' + escapeRegex(escapeHtml(q)) + ')', 'gi'), '<mark>$1</mark>');
+}
+
+function formatDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  }
+  return d.toLocaleDateString([], {month:'short', day:'numeric'});
+}
+
+// ─────────────────────────────────────────
+// KEYBOARD SHORTCUTS
+// ─────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey)) {
+    if (e.key === 'n') { e.preventDefault(); addNote(); }
+    if (e.key === 'f') { e.preventDefault(); document.getElementById('search').focus(); }
+    if (e.key === 'p') { e.preventDefault();
+      const modes = ['raw','preview','split'];
+      const i = modes.indexOf(state.viewMode);
+      state.viewMode = modes[(i+1)%3];
+      save(); applyViewMode();
+    }
+  }
+  if (e.key === 'Escape') {
+    document.getElementById('search').blur();
+    closeModal('folder-modal');
+  }
+});
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+load();
+
+// Add default welcome note if empty
+if (!state.notes.length) {
+  state.notes.push({
+    id: 'n_welcome',
+    folderId: 'f_default',
+    title: 'welcome to SCRATCHROT',
+    content: `# welcome to SCRATCHROT
+
+this is your grungepunk notepad.
+
+## markdown supported
+
+**bold**, *italic*, ~~strikethrough~~
+
+## task lists
+
+- [ ] create a note
+- [ ] make a folder
+- [x] open this app
+- [ ] write something cursed
+
+## code blocks
+
+\`\`\`js
+const mood = "grungepunk";
+console.log(\`feeling \${mood}\`);
+\`\`\`
+
+## shortcuts
+
+\`ctrl+n\` — new note  
+\`ctrl+f\` — search  
+\`ctrl+p\` — cycle view mode  
+`,
+    pinned: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  state.activeNote = 'n_welcome';
+  save();
+}
+
+renderAll();
+</script>
+</body>
+</html>
